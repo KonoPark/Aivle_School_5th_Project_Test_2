@@ -49,9 +49,9 @@ phases:
       - docker push $REPO_FRONTEND:$IMAGE_TAG
 
       - echo "Deploy to EKS"
-      - aws eks update-kubeconfig --name my-eks-cluster --region us-east-1
+      - aws eks update-kubeconfig --name my-eks-cluster --region us-east-1 --kubeconfig /tmp/kubeconfig
       - kubectl get nodes
-      - kubectl apply -f k8s-deployment.yaml
+      - KUBECONFIG=/tmp/kubeconfig kubectl apply -f k8s-deployment.yaml
       - echo "Deployment Complete"
 
 artifacts:
