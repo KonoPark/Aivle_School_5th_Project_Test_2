@@ -1,38 +1,77 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "=== Installing/Updating Dependencies ==="
+echo "Date: $(date)"
+echo "User: $(whoami)"
+echo "Kernel: $(uname -a)"
 
-# 1. Docker Buildx 플러그인 설치 (Root 권한 필요)
-# 최신 버전 다운로드 경로 확인 필요. 여기서는 v0.17.1 기준 예시 사용하거나, yum update 시도
-# Amazon Linux 2023은 yum install docker-buildx-plugin 사용 가능
+# --- Install Docker Engine (Amazon Linux 2023) ---
+# AL2023은 amazon-linux-extras가 없고, 보통 dnf/yum로 docker 패키지를 설치합니다.
+echo "Installing Docker packages..."
+dnf -y install docker
 
-echo "Buildx plugin installation..."
+echo "Enabling and starting Docker daemon..."
+systemctl enable --now docker
 
-# 플러그인 디렉토리 생성
+# --- Ensure docker group + socket permissions ---
+echo "Ensuring docker group exists and ec2-user is in docker group..."
+getent group docker >/dev/null 2>&1 || groupadd docker
+usermod -aG docker ec2-user || true
+
+echo "Docker socket:"
+ls -al /var/run/docker.sock || true
+
+# --- Install/Ensure Docker Compose v2 plugin ---
+# dnf에 docker-compose-plugin이 없을 수 있어 바이너리로 설치(네가 한 방식)를 자동화
+echo "Installing Docker Compose v2 plugin..."
 mkdir -p /usr/local/lib/docker/cli-plugins
 
-# buildx 바이너리 다운로드 (v0.17.1)
-# architecture 확인
-ARCH=$(uname -m)
-if [ "$ARCH" == "x86_64" ]; then
-  ARCH="amd64"
-elif [ "$ARCH" == "aarch64" ]; then
-  ARCH="arm64"
+ARCH="$(uname -m)"
+if [ "$ARCH" = "x86_64" ]; then
+  ARCH="x86_64"
+elif [ "$ARCH" = "aarch64" ]; then
+  ARCH="aarch64"
+else
+  echo "Unsupported arch: $ARCH"
+  exit 1
+fi
+
+COMPOSE_VERSION="v2.27.0"
+COMPOSE_URL="https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}"
+
+curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose "$COMPOSE_URL"
+chmod 755 /usr/local/lib/docker/cli-plugins/docker-compose
+
+# docker가 플러그인을 보는 기본 경로를 타지 않는 케이스 대비(안전용)
+mkdir -p /usr/libexec/docker/cli-plugins
+cp -f /usr/local/lib/docker/cli-plugins/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
+chmod 755 /usr/libexec/docker/cli-plugins/docker-compose
+
+# --- Install Buildx plugin (optional but keep) ---
+echo "Installing Docker Buildx plugin..."
+mkdir -p /usr/local/lib/docker/cli-plugins
+
+BARCH="$(uname -m)"
+if [ "$BARCH" = "x86_64" ]; then
+  BARCH="amd64"
+elif [ "$BARCH" = "aarch64" ]; then
+  BARCH="arm64"
+else
+  echo "Unsupported arch for buildx: $BARCH"
+  exit 1
 fi
 
 BUILDX_VERSION="v0.17.1"
-URL="https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-${ARCH}"
+BUILDX_URL="https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-${BARCH}"
+curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-buildx "$BUILDX_URL"
+chmod 755 /usr/local/lib/docker/cli-plugins/docker-buildx
 
-echo "Downloading buildx from $URL"
-curl -L -o /usr/local/lib/docker/cli-plugins/docker-buildx $URL
-
-# 실행 권한 부여
-chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
-
-echo "Docker Buildx installed successfully."
+# --- Verification (root context) ---
+echo "=== Verification ==="
+docker version
+docker info >/dev/null
 docker buildx version
+docker compose version
 
-# Docker Compose 플러그인 확인 (선택)
-echo "Checking Docker Compose version..."
-docker compose version || echo "Docker Compose not found or outdated"
+echo "=== Dependencies installation completed ==="

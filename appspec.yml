@@ -1,29 +1,47 @@
 version: 0.0
 os: linux
+
 files:
   - source: /
     destination: /home/ec2-user/mini_project5
     overwrite: true
 
 permissions:
+  - object: /home/ec2-user/mini_project5
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+    type:
+      - directory
+
+  - object: /home/ec2-user/mini_project5/scripts
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+    type:
+      - directory
+
   - object: /home/ec2-user/mini_project5/scripts/deploy.sh
-    pattern: "**"
     owner: ec2-user
     group: ec2-user
     mode: 755
+    type:
+      - file
+
   - object: /home/ec2-user/mini_project5/scripts/install_dependencies.sh
-    pattern: "**"
     owner: ec2-user
     group: ec2-user
     mode: 755
+    type:
+      - file
 
 hooks:
   AfterInstall:
     - location: scripts/install_dependencies.sh
-      timeout: 300
+      timeout: 600
       runas: root
 
   ApplicationStart:
     - location: scripts/deploy.sh
-      timeout: 300
+      timeout: 600
       runas: ec2-user
