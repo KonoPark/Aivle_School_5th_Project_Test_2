@@ -50,10 +50,11 @@ phases:
 
       - echo "Deploy to EKS"
       - aws eks update-kubeconfig --name my-eks-cluster --region us-east-1 --kubeconfig /tmp/kubeconfig
+      - export KUBECONFIG=/tmp/kubeconfig
+      - kubectl config view --minify
+      - kubectl config get-contexts
       - kubectl get nodes
-      - KUBECONFIG=/tmp/kubeconfig kubectl apply -f k8s-deployment.yaml
-      - echo "Deployment Complete"
-
+      - kubectl apply -f k8s-deployment.yaml
 artifacts:
   files:
     - '**/*'
