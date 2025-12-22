@@ -6,10 +6,12 @@ phases:
       java: corretto17
       nodejs: 20
     commands:
-      - echo "Environment Setup - Install kubectl"
-      - curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.1/2023-04-19/bin/linux/amd64/kubectl
-      - chmod +x ./kubectl
-      - mv ./kubectl /usr/local/bin/
+      - echo "Install kubectl (stable)"
+      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - chmod +x kubectl
+      - mv kubectl /usr/local/bin/kubectl
+      - kubectl version --client
+
       - echo "Grant gradlew permissions"
       - find . -name "gradlew" -type f -exec chmod +x {} \;
 
@@ -17,10 +19,11 @@ phases:
     commands:
       - echo "ECR Login"
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 416225317325.dkr.ecr.us-east-1.amazonaws.com
-      - REPO_BACKEND=416225317325.dkr.ecr.us-east-1.amazonaws.com/ai0102-backend
-      - REPO_FRONTEND=416225317325.dkr.ecr.us-east-1.amazonaws.com/ai0102-front
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - export REPO_BACKEND=416225317325.dkr.ecr.us-east-1.amazonaws.com/my-backend
+      - export REPO_FRONTEND=416225317325.dkr.ecr.us-east-1.amazonaws.com/my-frontend
+      - export COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "IMAGE_TAG=$IMAGE_TAG"
 
   build:
     commands:
@@ -44,9 +47,10 @@ phases:
       - docker push $REPO_BACKEND:$IMAGE_TAG
       - docker push $REPO_FRONTEND:latest
       - docker push $REPO_FRONTEND:$IMAGE_TAG
-      
+
       - echo "Deploy to EKS"
-      - aws eks update-kubeconfig --name ai0102-EKS --region us-east-1
+      - aws eks update-kubeconfig --name my-eks-cluster --region us-east-1
+      - kubectl get nodes
       - kubectl apply -f k8s-deployment.yaml
       - echo "Deployment Complete"
 
