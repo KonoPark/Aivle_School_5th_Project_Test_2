@@ -53,6 +53,9 @@ phases:
       - export KUBECONFIG=/tmp/kubeconfig
       - kubectl config view --minify
       - kubectl config get-contexts
+      - aws sts get-caller-identity
+      - aws eks describe-cluster --name my-eks-cluster --region us-east-1 --query "cluster.accessConfig.authenticationMode" --output text
+      - aws eks get-token --cluster-name my-eks-cluster --region us-east-1 | head -c 200; echo
       - kubectl get nodes
       - kubectl apply -f k8s-deployment.yaml
 artifacts:
