@@ -29,12 +29,12 @@ permissions:
       - file
 
 hooks:
-  BeforeInstall:
+  AfterInstall:
     - location: scripts/install_dependencies.sh
-      timeout: 900
+      timeout: 300
       runas: root
 
   ApplicationStart:
     - location: scripts/deploy.sh
-      timeout: 1800
-      runas: ec2-user
+      timeout: 300
+      runas: root
