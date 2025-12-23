@@ -14,13 +14,6 @@ permissions:
     type:
       - directory
 
-  - object: /home/ec2-user/mini_project5/scripts
-    owner: ec2-user
-    group: ec2-user
-    mode: 755
-    type:
-      - directory
-
   - object: /home/ec2-user/mini_project5/scripts/deploy.sh
     owner: ec2-user
     group: ec2-user
@@ -29,19 +22,19 @@ permissions:
       - file
 
   - object: /home/ec2-user/mini_project5/scripts/install_dependencies.sh
-    owner: ec2-user
-    group: ec2-user
+    owner: root
+    group: root
     mode: 755
     type:
       - file
 
 hooks:
-  AfterInstall:
+  BeforeInstall:
     - location: scripts/install_dependencies.sh
-      timeout: 600
+      timeout: 900
       runas: root
 
   ApplicationStart:
     - location: scripts/deploy.sh
-      timeout: 600
+      timeout: 1800
       runas: ec2-user
